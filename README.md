@@ -94,9 +94,12 @@ before the node can schedule GPU pods at all. That is a real tradeoff, not a fre
 
 ## Hardware
 
-1× **`Standard_NC4as_T4_v3`** — NVIDIA **T4, Turing (SM 7.5)**, 4 vCPU, 28GB RAM — plus
-1× `Standard_D2s_v3` CPU node so CoreDNS and the Operator's controllers never land on the
-expensive card.
+**GPU node** — 1× `Standard_NC4as_T4_v3`: NVIDIA **T4, Turing (SM 7.5)** with **16GB VRAM**,
+plus 4 vCPU and 28GB host RAM, $0.684/hr. Runs the vLLM pod and the Operator's DaemonSets. Tainted
+`nvidia.com/gpu=present:NoSchedule` so nothing else lands on it.
+
+**System node** — 1× `Standard_D2s_v3`: 2 vCPU, 8GB RAM, $0.125/hr. Required by AKS; runs
+CoreDNS and the Operator's controllers, keeping cluster overhead off the expensive card.
 
 Measured on the running cluster:
 
@@ -132,12 +135,21 @@ practical on a T4 at all.
 
 ### Measured memory at `--gpu-memory-utilization=0.90`
 
-| Item | VRAM |
-|---|---|
-| Total card | 15360 MiB |
-| Allocated by vLLM (`nvidia-smi`) | 13605 MiB |
-| Weights + runtime overhead | ~5.97 GiB |
-| **Available KV cache** | **7.32 GiB** |
+This is **VRAM on the card only** — the node's 28GB host RAM is a separate pool and never
+holds the model. Each level below is a subdivision of the one above it, not an addition:
+
+```
+15.00 GiB  total card (15360 MiB via nvidia-smi)
+│
+├── 13.29 GiB  vLLM's budget  (15.00 x 0.90, the utilization cap)
+│   ├── 5.97 GiB  weights + runtime overhead (AWQ 4-bit, activations, CUDA context)
+│   └── 7.32 GiB  KV cache  <- what's left over is what serves concurrency
+│
+└──  1.71 GiB  untouched headroom (the other 10%)
+```
+
+Weights are fixed, so **KV cache is the remainder** — raise `--gpu-memory-utilization` and
+every extra byte goes to KV cache, i.e. concurrency, at the cost of OOM headroom.
 
 ```
 INFO [gpu_worker.py:466]      Available KV cache memory: 7.32 GiB
