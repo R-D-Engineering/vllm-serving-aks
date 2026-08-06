@@ -161,7 +161,7 @@ curl localhost:8000/v1/completions -H "Content-Type: application/json" -d '{"mod
 
 ## 3. Teardown — run at the END of EVERY session
 
-*Scale-down node pool*
+*Scale-down GPU node pool*
 
 ```bash
 ./gpu-nodes-scaling.sh in  
@@ -173,10 +173,13 @@ curl localhost:8000/v1/completions -H "Content-Type: application/json" -d '{"mod
 az aks nodepool show --resource-group rg-vllm-serving-aks --cluster-name vllm-serving-aks --name gpu --query {name:name, count:count, state:provisioningState, vm:vmSize, os:osSku} -o table
 ```
 
+*Complete Cleanup*
+
 ```bash
 cd terraform && terraform destroy
-```
 
+```
+To keep Terraform state in sync instead, use `terraform destroy` from `terraform/`.
 
 The resource group is a Terraform resource (`azurerm_resource_group.this` in `aks.tf`), so one
 destroy removes the AKS cluster, both node pools, disks, the managed identity, and the `MC_*`
@@ -190,22 +193,4 @@ az vm list-usage --location australiacentral \
 az group exists --name rg-vllm-serving-aks                        # false = fully deleted
 ```
 
-To keep Terraform state in sync instead, use `terraform destroy` from `terraform/`.
-
 ---
-
-## Cost reference
-
-| Component | $/hr |
-|---|---|
-| `Standard_NC4as_T4_v3` GPU node (Linux, on-demand) | 0.684 |
-| `Standard_D2s_v3` system node (Linux, on-demand) | 0.125 |
-| AKS control plane (`sku_tier = "Free"`) | 0.000 |
-| **Total** | **~0.81** |
-
-Against a $50/month ceiling that is **~62 hours of uptime for the whole month**.
-A build → verify → teardown session runs ~1.5-2 hrs ≈ **$1.20-1.60**.
-
-**Spot would cost $0.198/hr (71% less) but is blocked**: `Total Regional Low-priority vCPUs`
-is 3, and the VM needs 4. Raising that quota is the single highest-leverage cost action
-if this project gets used repeatedly.
