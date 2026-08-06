@@ -238,24 +238,54 @@ checks in **[docs/setup.md](docs/setup.md)**.
 
 ## Build sequence
 
-1. **Pre-flight.** Confirm `NCASv3_T4` quota, register the four resource providers, confirm the
-   SKU has no regional restrictions, and query real pricing.
-   *Check:* quota shows `0/4`; all four providers `Registered`; `restrictions=NONE`.
-2. **HCP workspace.** `vllm-serving-aks` in org `Shikha_Projects`, **Execution Mode = Local**.
-   *Check:* `terraform init` says "HCP Terraform has been successfully initialized".
-   Remote execution would fail — azurerm authenticates off the local `az login` session.
-3. **`terraform apply`** → resource group, AKS, GPU pool, GPU Operator (4 resources, ~10-15 min).
-   *Check:* `kubectl get nodes -o wide` shows 2 `Ready` nodes, GPU pool on containerd 1.7.
-4. **GPU visible to Kubernetes.**
-   *Check:* `kubectl describe node -l workload=gpu | grep nvidia.com/gpu` shows `1`.
-   **This is the real checkpoint** — until that number appears the vLLM pod stays `Pending`.
-   If it never appears, check the Operator DaemonSets' tolerations first.
-5. **`kubectl apply -f k8s/vllm-deployment.yaml`.** First boot ~10 min (~11GB image + weights).
-   *Check:* pod schedules on the GPU node, logs show the KV-cache line, `/health` returns 200.
-6. **`scripts/verify.sh`.**
-   *Check:* ends with `✅ Project verification complete.`
-7. **`terraform destroy`.** Non-negotiable — see cost below.
-   *Check:* `az vm list-usage` shows `CurrentValue` back to `0`.
+Seven steps, ~15 min of waiting. Each one has a check you must see before moving on.
+
+### 1. Pre-flight
+
+Confirm `NCASv3_T4` quota, register the four resource providers, confirm the SKU has no
+regional restrictions, and query real pricing.
+
+> **Check:** quota shows `0/4` · all four providers `Registered` · `restrictions=NONE`
+
+### 2. HCP workspace
+
+Create `vllm-serving-aks` in org `Shikha_Projects` with **Execution Mode = Local**.
+Remote execution would fail — azurerm authenticates off the local `az login` session.
+
+> **Check:** `terraform init` says *"HCP Terraform has been successfully initialized"*
+
+### 3. `terraform apply`
+
+Creates resource group, AKS, GPU pool and GPU Operator — 4 resources, ~10-15 min.
+
+> **Check:** `kubectl get nodes -o wide` shows 2 `Ready` nodes, GPU pool on containerd 1.7
+
+### 4. GPU visible to Kubernetes
+
+Wait for the GPU Operator to advertise the GPU as a schedulable resource on the node.
+
+> **Check:** `kubectl describe node -l workload=gpu | grep nvidia.com/gpu` shows `1`
+
+**This is the real checkpoint** — until that `1` appears the vLLM pod stays `Pending`.
+If it never appears, check the Operator DaemonSets' tolerations first.
+
+### 5. Deploy vLLM
+
+`kubectl apply -f k8s/vllm-deployment.yaml` — first boot ~10 min (~11GB image + weights).
+
+> **Check:** pod schedules on the GPU node · logs show the KV-cache line · `/health` returns 200
+
+### 6. Verify
+
+Run `scripts/verify.sh`.
+
+> **Check:** ends with `✅ Project verification complete.`
+
+### 7. `terraform destroy`
+
+Non-negotiable — see [Cost](#cost) below.
+
+> **Check:** `az vm list-usage` shows `CurrentValue` back to `0`
 
 ---
 
