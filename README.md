@@ -153,7 +153,6 @@ every extra byte goes to KV cache, i.e. concurrency, at the cost of OOM headroom
 Note- KV cache is model's memory of every token - the attention key & value it stores, So it never recomputes them when genenrating token
 
 
-
 ```
 INFO [gpu_worker.py:466]      Available KV cache memory: 7.32 GiB
 INFO [kv_cache_utils.py:1733] GPU KV cache size: 137,072 tokens
@@ -166,6 +165,11 @@ the measurement says there is ~4x more available. Worth raising and re-testing u
 
 ---
 
+### Useful commands
+
+You can find essential commands used, with what and why, in **[imp-commands.md](imp-commands.md)**.
+
+---
 
 ## War Stories
 
@@ -229,14 +233,10 @@ You need the Azure CLI, Terraform, kubectl and Helm locally, plus **approved `NC
 quota** and four hand-registered resource providers. Full prerequisites and per-step verify
 checks in **[docs/setup.md](docs/setup.md)**.
 
-Every command actually used, with what and why, is in **[imp-commands.md](imp-commands.md)**.
-
 
 ---
 
 ## Build sequence
-
-The short version — full commands in [imp-commands.md](imp-commands.md):
 
 1. **Pre-flight.** Confirm `NCASv3_T4` quota, register the four resource providers, confirm the
    SKU has no regional restrictions, and query real pricing.
