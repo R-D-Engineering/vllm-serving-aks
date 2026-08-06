@@ -133,8 +133,7 @@ weights alone — it would technically load on a 15 GiB card and leave essential
 KV cache, serving one short request at a time or OOMing. Quantization is what makes a 7B model
 practical on a T4 at all.
 
-### GPU Mathematics at `--gpu-memory-utilization=0.90`
-
+### GPU Mathematics
 
 This is **VRAM on the card only** — the node's 28GB host RAM is a separate pool and never
 holds the model
