@@ -300,7 +300,7 @@ action here — the GPU is ~84% of the bill, so it beats any VM-size tuning.
 
 ---
 
-## Interview questions this project answers
+## Important questions this project answers-
 
 **What does the GPU Operator install, and why not hand-install drivers?**
 Driver, container toolkit, device plugin, node-feature-discovery and DCGM exporter — as one
