@@ -133,11 +133,11 @@ weights alone — it would technically load on a 15 GiB card and leave essential
 KV cache, serving one short request at a time or OOMing. Quantization is what makes a 7B model
 practical on a T4 at all.
 
-### Measured memory at `--gpu-memory-utilization=0.90`
+### GPU Mathematics at `--gpu-memory-utilization=0.90`
+
 
 This is **VRAM on the card only** — the node's 28GB host RAM is a separate pool and never
-holds the model. Each level below is a subdivision of the one above it, not an addition:
-
+holds the model
 ```
 15.00 GiB  total card (15360 MiB via nvidia-smi)
 │
@@ -151,6 +151,10 @@ holds the model. Each level below is a subdivision of the one above it, not an a
 Weights are fixed, so **KV cache is the remainder** — raise `--gpu-memory-utilization` and
 every extra byte goes to KV cache, i.e. concurrency, at the cost of OOM headroom.
 
+Note- KV cache is model's memory of every token - the attention key & value it stores, So it never recomputes them when genenrating token
+
+
+
 ```
 INFO [gpu_worker.py:466]      Available KV cache memory: 7.32 GiB
 INFO [kv_cache_utils.py:1733] GPU KV cache size: 137,072 tokens
@@ -163,28 +167,8 @@ the measurement says there is ~4x more available. Worth raising and re-testing u
 
 ---
 
-## Two traps worth knowing
 
-**1. containerd config version mismatch → node `NotReady`.**
-AKS's default Ubuntu 24.04 image ships containerd 2.3, whose root `config.toml` is version 2
-and imports drop-ins from `/etc/containerd/conf.d/`. The GPU Operator toolkit writes its NVIDIA
-runtime as a drop-in with a *higher* config version, and containerd 2.x refuses to start:
-
-```
-drop-in config version 4 higher than root config version 2
-```
-
-No runtime means no kubelet, so the node never goes `Ready`. This project applies **both** fixes:
-
-- `os_sku = "Ubuntu2204"` on the GPU pool — pins containerd 1.7, which has no version check.
-- `CONTAINERD_CONFIG=/etc/containerd/config.toml` on the toolkit — edits the main config in
-  place rather than writing a drop-in at all.
-
-**2. A Service named after the app crashes vLLM.**
-Kubernetes injects legacy Docker-link env vars for every Service in the namespace. A Service
-named `vllm` produces `VLLM_PORT=tcp://10.0.x.x:8000`; vLLM reads `VLLM_PORT` as its own listen
-port, gets a URI, and dies in `CrashLoopBackOff`. Fixed with `enableServiceLinks: false` in the
-pod spec.
+## War Stories
 
 Full detail on both in **[docs/project-summary.md](docs/project-summary.md)**.
 
