@@ -230,7 +230,7 @@ quota** and four hand-registered resource providers. Full prerequisites and per-
 checks in **[docs/setup.md](docs/setup.md)**.
 
 Every command actually used, with what and why, is in **[imp-commands.md](imp-commands.md)**.
-The problems hit along the way are in **[docs/project-summary.md](docs/project-summary.md)**.
+
 
 ---
 
