@@ -1,6 +1,8 @@
 ## Production-Grade LLM Serving with vLLM on Azure AKS
 (Terraform + NVIDIA GPU Operator + T4)
 
+📺 **Video walkthrough:** [Production-Grade LLM Serving with vLLM on Azure AKS](https://www.youtube.com/watch?v=EyXzfnAxCdA)
+
 Provision a GPU on **Azure AKS with Terraform**, install the **NVIDIA GPU Operator**, and serve
 **Qwen2.5-7B-Instruct-AWQ** through **vLLM**.
 
