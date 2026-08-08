@@ -2,8 +2,10 @@
 (Terraform + NVIDIA GPU Operator + T4)
 
 Provision a GPU on **Azure AKS with Terraform**, install the **NVIDIA GPU Operator**, and serve
-**Qwen2.5-7B-Instruct-AWQ** through **vLLM's OpenAI-compatible API** — a production-shaped
-inference endpoint, reachable via `curl /v1/completions`.
+**Qwen2.5-7B-Instruct-AWQ** through **vLLM**.
+
+**Deliverable:** a production-shaped inference endpoint on vLLM's OpenAI-compatible API,
+reachable via `curl /v1/completions`.
 
 ![vLLM model serving on Azure AKS](docs/vllm-serving-aks-architecture.drawio.png)
 
