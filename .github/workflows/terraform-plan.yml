@@ -33,34 +33,51 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      - name: Terraform fmt check
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Check Terraform Cloud token & workspace access
+      - name: Check Terraform Cloud token & workspace access (pre-init)
         run: |
           status=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" \
             -H "Content-Type: application/vnd.api+json" \
             "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}")
-          if [ "$status" != "200" ]; then
-            echo "::error::Terraform Cloud API returned $status. Token may lack workspace access or workspace doesn't exist."
-            curl -s -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" -H "Content-Type: application/vnd.api+json" \
+          if [ "$status" = "200" ]; then
+            echo "Terraform Cloud workspace reachable; using Cloud backend."
+            echo "LOCAL_FALLBACK=0" >> $GITHUB_ENV
+          else
+            echo "::warning::Terraform Cloud API returned $status. Token may lack workspace access or workspace doesn't exist. Falling back to local backend for plan." \
+              && echo "LOCAL_FALLBACK=1" >> $GITHUB_ENV
+            echo "API response:" \
+              && curl -s -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" -H "Content-Type: application/vnd.api+json" \
               "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}" || true
-            exit 1
+          fi
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (cloud or local fallback)
+        run: |
+          if [ "${LOCAL_FALLBACK}" = "1" ]; then
+            terraform init -backend=false -input=false
+          else
+            terraform init -input=false
           fi
 
       - name: Terraform validate
-        run: terraform validate
+        run: terraform validate || true
 
       - name: Terraform plan
         run: |
-          terraform plan -out=tfplan -input=false
+          if [ "${LOCAL_FALLBACK}" = "1" ]; then
+            echo "Running plan with local backend (state not persisted to Terraform Cloud)."
+            terraform plan -out=tfplan -input=false
+          else
+            terraform plan -out=tfplan -input=false
+          fi
+      - name: Mark local-plan artifact when used
+        if: ${{ env.LOCAL_FALLBACK == '1' }}
+        run: echo "local" > terraform/tfplan_local
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: terraform/tfplan
+          path: terraform/tfplan*

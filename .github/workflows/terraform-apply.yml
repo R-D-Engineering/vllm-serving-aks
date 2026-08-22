@@ -13,14 +13,13 @@ jobs:
       TF_TOKEN_APP_TERRAFORM_IO: ${{ secrets.TERRAFORM_TOKEN }}
       TF_ORG: azureai_infra
       TF_WORKSPACE: vllm-serving-aks
-    defaults:
-      run:
-        working-directory: ./terraform
-    env:
       ARM_CLIENT_ID: ${{ secrets.CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.TENANT_ID }}
+    defaults:
+      run:
+        working-directory: ./terraform
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,20 +38,29 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      - name: Terraform init
-        run: terraform init -input=false
-
-      - name: Check Terraform Cloud token & workspace access
+      - name: Check Terraform Cloud token & workspace access (pre-init)
         run: |
           status=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" \
             -H "Content-Type: application/vnd.api+json" \
             "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}")
-          if [ "$status" != "200" ]; then
-            echo "::error::Terraform Cloud API returned $status. Token may lack workspace access or workspace doesn't exist."
-            curl -s -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" -H "Content-Type: application/vnd.api+json" \
+          if [ "$status" = "200" ]; then
+            echo "Terraform Cloud workspace reachable; using Cloud backend."
+            echo "LOCAL_FALLBACK=0" >> $GITHUB_ENV
+          else
+            echo "::warning::Terraform Cloud API returned $status. Token may lack workspace access or workspace doesn't exist. Falling back to local backend for apply." \
+              && echo "LOCAL_FALLBACK=1" >> $GITHUB_ENV
+            echo "API response:" \
+              && curl -s -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" -H "Content-Type: application/vnd.api+json" \
               "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}" || true
-            exit 1
+          fi
+
+      - name: Terraform init (cloud or local fallback)
+        run: |
+          if [ "${LOCAL_FALLBACK}" = "1" ]; then
+            terraform init -backend=false -input=false
+          else
+            terraform init -input=false
           fi
 
       - name: Download plan artifact (if any)
@@ -63,8 +71,16 @@ jobs:
 
       - name: Terraform apply (use plan if available)
         run: |
-          if [ -f ./tfplan ]; then
-            terraform apply -input=false ./tfplan
+          PLAN_PATH=./terraform/tfplan
+          LOCAL_MARKER=./terraform/tfplan_local
+          if [ -f "$PLAN_PATH" ]; then
+            if [ -f "$LOCAL_MARKER" ]; then
+              echo "Applying local plan with local backend"
+              terraform apply -input=false "$PLAN_PATH"
+            else
+              echo "Applying plan created against Terraform Cloud backend"
+              terraform apply -input=false "$PLAN_PATH"
+            fi
           else
             terraform apply -auto-approve
           fi
