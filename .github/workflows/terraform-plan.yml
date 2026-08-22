@@ -1,12 +1,6 @@
 name: Terraform Plan
 
 on:
-  pull_request:
-    paths:
-      - 'terraform/**'
-  push:
-    paths:
-      - 'terraform/**'
   workflow_dispatch: {}
 
 jobs:
@@ -23,10 +17,13 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v1
         with:
-          client-id: ${{ secrets.CLIENT_ID }}
-          tenant-id: ${{ secrets.TENANT_ID }}
-          subscription-id: ${{ secrets.SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
+          creds: |
+            {
+              "clientId": "${{ secrets.CLIENT_ID }}",
+              "clientSecret": "${{ secrets.CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.TENANT_ID }}"
+            }
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
