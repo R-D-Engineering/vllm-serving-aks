@@ -1,9 +1,6 @@
 name: Terraform Apply
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch: {}
 
 jobs:
@@ -37,5 +34,16 @@ jobs:
       - name: Terraform init
         run: terraform init -input=false
 
-      - name: Terraform apply
-        run: terraform apply -auto-approve
+      - name: Download plan artifact (if any)
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ./terraform
+
+      - name: Terraform apply (use plan if available)
+        run: |
+          if [ -f ./tfplan ]; then
+            terraform apply -input=false ./tfplan
+          else
+            terraform apply -auto-approve
+          fi

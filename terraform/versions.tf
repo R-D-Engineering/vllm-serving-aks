@@ -5,7 +5,7 @@ terraform {
   # `az login` session supplies Azure credentials. Create this workspace in the
   # Shikha_Projects org and set its Execution Mode to "Local" before the first apply.
   cloud {
-    organization = "Shikha_Projects"
+    organization = "azureai_infra"
 
     workspaces {
       name = "vllm-serving-aks"
