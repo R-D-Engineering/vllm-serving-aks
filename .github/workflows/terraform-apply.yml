@@ -2,10 +2,13 @@ name: Terraform Apply
 
 on:
   workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Terraform Plan"]
+    types: [completed]
 
 jobs:
   terraform_apply:
-    if: ${{ github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     name: Terraform Apply
     runs-on: ubuntu-latest
     environment: production
@@ -38,11 +41,17 @@ jobs:
       - name: Terraform init
         run: terraform init -input=false
 
-      - name: Download plan artifact (if any)
+      - name: Download plan artifact from plan run
+        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
         with:
+          run-id: ${{ github.event.workflow_run.id }}
           name: tfplan
-          path: ./terraform
+          path: .
+
+      - name: No plan artifact (manual run)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: echo "Manual run: no plan artifact will be downloaded unless you supply one. Proceeding to apply directly if no artifact found."
 
       - name: Terraform apply (use plan if available)
         run: |
