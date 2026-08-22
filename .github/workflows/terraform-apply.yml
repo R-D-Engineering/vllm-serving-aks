@@ -8,6 +8,8 @@ jobs:
     name: Terraform Apply
     runs-on: ubuntu-latest
     environment: production
+    env:
+      TF_TOKEN_APP_TERRAFORM_IO: ${{ secrets.TERRAFORM_TOKEN }}
     defaults:
       run:
         working-directory: ./terraform
