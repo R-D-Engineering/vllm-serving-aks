@@ -96,5 +96,10 @@ jobs:
         with:
           name: tfplan
           path: terraform/tfplan*
-          name: tfplan
-          path: terraform/tfplan*
+
+      - name: Upload plan logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-logs
+          path: terraform/*.log
