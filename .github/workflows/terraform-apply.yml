@@ -45,6 +45,22 @@ jobs:
 
       - name: Download plan artifact from specified run
         if: ${{ github.event.inputs.plan_run_id != '' }}
+        run: |
+          RUN_ID=${{ github.event.inputs.plan_run_id }}
+          REPO=${{ github.repository }}
+          echo "Checking artifacts for run id: $RUN_ID in repo $REPO"
+          resp=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${REPO}/actions/runs/${RUN_ID}/artifacts")
+          echo "API response (first 200 chars):"
+          echo "${resp:0:200}"
+          # Extract artifact names without jq
+          names=$(echo "$resp" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*"' | sed -E 's/"name"[[:space:]]*:[[:space:]]*"([^"]*)"/\1/')
+          echo "Found artifacts:"
+          echo "$names"
+          echo "$names" | grep -x "tfplan" >/dev/null 2>&1 || (echo "::error::Artifact 'tfplan' not found in run ${RUN_ID}. Available artifacts:" && echo "$names" && exit 1)
+        shell: bash
+
+      - name: Download plan artifact
+        if: ${{ github.event.inputs.plan_run_id != '' }}
         uses: actions/download-artifact@v4
         with:
           run-id: ${{ github.event.inputs.plan_run_id }}
