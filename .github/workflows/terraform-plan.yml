@@ -61,23 +61,40 @@ jobs:
             terraform init -input=false
           fi
 
-      - name: Terraform validate
-        run: terraform validate || true
-
-      - name: Terraform plan
+      - name: Terraform plan (with automatic fallback on permission error)
         run: |
-          if [ "${LOCAL_FALLBACK}" = "1" ]; then
-            echo "Running plan with local backend (state not persisted to Terraform Cloud)."
-            terraform plan -out=tfplan -input=false
-          else
-            terraform plan -out=tfplan -input=false
+          set -o pipefail
+          mkdir -p terraform
+          terraform plan -out=terraform/tfplan -input=false 2>&1 | tee terraform/plan.log
+          rc=${PIPESTATUS[0]}
+          if [ $rc -eq 0 ]; then
+            echo "Plan succeeded against configured backend."
+            exit 0
           fi
-      - name: Mark local-plan artifact when used
-        if: ${{ env.LOCAL_FALLBACK == '1' }}
-        run: echo "local" > terraform/tfplan_local
+
+          # If plan failed due to insufficient rights on Terraform Cloud, retry locally
+          if grep -i -E "insufficient rights|insufficient permissions|permission" terraform/plan.log >/dev/null 2>&1; then
+            echo "::warning::Plan failed due to permission error in Terraform Cloud. Retrying with local backend (backend=false)."
+            terraform init -backend=false -input=false
+            terraform plan -out=terraform/tfplan -input=false 2>&1 | tee terraform/plan-local.log
+            rc2=${PIPESTATUS[0]}
+            if [ $rc2 -ne 0 ]; then
+              echo "::error::Local plan also failed. See terraform/plan-local.log"
+              cat terraform/plan-local.log || true
+              exit $rc2
+            fi
+            # mark local plan so apply knows to use local backend
+            echo "local" > terraform/tfplan_local
+          else
+            echo "::error::terraform plan failed (non-permission error). See terraform/plan.log"
+            cat terraform/plan.log || true
+            exit $rc
+          fi
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
+          name: tfplan
+          path: terraform/tfplan*
           name: tfplan
           path: terraform/tfplan*
