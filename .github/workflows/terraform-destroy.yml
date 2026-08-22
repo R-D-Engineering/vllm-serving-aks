@@ -5,11 +5,14 @@ on:
 
 jobs:
   terraform_destroy:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     name: Terraform Destroy
     runs-on: ubuntu-latest
     environment: production
     env:
       TF_TOKEN_APP_TERRAFORM_IO: ${{ secrets.TERRAFORM_TOKEN }}
+      TF_ORG: azureai_infra
+      TF_WORKSPACE: vllm-serving-aks
     defaults:
       run:
         working-directory: ./terraform
@@ -38,6 +41,19 @@ jobs:
 
       - name: Terraform init
         run: terraform init -input=false
+
+      - name: Check Terraform Cloud token & workspace access
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}")
+          if [ "$status" != "200" ]; then
+            echo "::error::Terraform Cloud API returned $status. Token may lack workspace access or workspace doesn't exist."
+            curl -s -H "Authorization: Bearer $TF_TOKEN_APP_TERRAFORM_IO" -H "Content-Type: application/vnd.api+json" \
+              "https://app.terraform.io/api/v2/organizations/${TF_ORG}/workspaces/${TF_WORKSPACE}" || true
+            exit 1
+          fi
 
       - name: Terraform destroy
         run: terraform destroy -auto-approve
