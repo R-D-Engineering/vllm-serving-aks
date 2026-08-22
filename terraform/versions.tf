@@ -1,16 +1,9 @@
 terraform {
   required_version = "~> 1.15"
 
-  # HCP Terraform (Terraform Cloud) backend, run with LOCAL execution so the local
-  # `az login` session supplies Azure credentials. Create this workspace in the
-  # Shikha_Projects org and set its Execution Mode to "Local" before the first apply.
-  cloud {
-    organization = "azureai_infra"
-
-    workspaces {
-      name = "vllm-serving-aks"
-    }
-  }
+  # Using local backend (store state in local `terraform.tfstate`).
+  # Previously this used Terraform Cloud; to use Terraform Cloud again, add
+  # a `cloud { organization = "..." }` block here or configure a remote backend.
 
   required_providers {
     azurerm = {
