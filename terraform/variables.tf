@@ -1,7 +1,7 @@
 variable "location" {
   description = "Azure region. Must have approved NCASv3_T4 (T4 GPU) quota."
   type        = string
-  default     = "australiacentral"
+  default     = "westus2"
 }
 
 variable "cluster_name" {
@@ -17,7 +17,7 @@ variable "kubernetes_version" {
 }
 
 variable "system_vm_size" {
-  description = "CPU system node pool VM size (CoreDNS, GPU Operator controllers). DSv3 family — subscription has quota for it in australiacentral (DASv5/DSv5 are 0)."
+  description = "CPU system node pool VM size (CoreDNS, GPU Operator controllers). DSv3 family — subscription has quota for it in westus2 (DASv5/DSv5 are 0)."
   type        = string
   default     = "Standard_D2s_v3"
 }
