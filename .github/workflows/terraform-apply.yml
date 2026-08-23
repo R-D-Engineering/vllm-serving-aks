@@ -65,7 +65,7 @@ jobs:
         with:
           run-id: ${{ github.event.inputs.plan_run_id }}
           name: tfplan
-          path: .
+          path: terraform
 
       - name: No plan artifact provided
         if: ${{ github.event.inputs.plan_run_id == '' }}
