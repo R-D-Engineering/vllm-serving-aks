@@ -47,3 +47,11 @@ jobs:
         with:
           name: tfplan
           path: tfplan
+
+      - name: Show run id and uploaded artifacts
+        run: |
+          echo "Plan run id: $GITHUB_RUN_ID"
+          echo "Listing artifacts for run $GITHUB_RUN_ID"
+          resp=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/actions/runs/$GITHUB_RUN_ID/artifacts")
+          echo "$resp"
+        shell: bash
